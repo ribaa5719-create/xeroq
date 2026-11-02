@@ -7,7 +7,7 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "migrate:remove-legacy-slug-index": "node scripts/removeLegacySlugIndex.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
