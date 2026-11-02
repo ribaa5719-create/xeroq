@@ -1,6 +1,7 @@
 import {
   AlertCircle,
   BarChart3,
+  CheckCheck,
   CheckCircle2,
   Clock3,
   Edit3,
@@ -10,12 +11,16 @@ import {
   Phone,
   Save,
   Store,
+  Timer,
   XCircle,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { shopApi } from '../services/shopApi'
 import { getReliableLocation } from '../utils/geolocation'
+import { analyticsApi } from '../services/analyticsApi'
+import { shopOrderApi } from '../services/shopOrderApi'
+import { StatCard } from '../components/UI'
 
 const emptyForm = {
   name: '',
@@ -179,7 +184,9 @@ function ShopForm({ initialValues, isCreating, onSaved }) {
       const response = isCreating
         ? await shopApi.create(toPayload(form))
         : await shopApi.update(toPayload(form))
-      onSaved(response.data.shop, isCreating ? 'Shop is active and ready for customers.' : 'Shop profile updated successfully.')
+      onSaved(response.data.shop, isCreating
+        ? 'Shop profile submitted for admin approval. It will appear on Find Shops after it is approved.'
+        : 'Shop profile updated successfully.')
     } catch (error) {
       setRequestError(error.response?.data?.message || 'Unable to save shop details. Please try again.')
     } finally {
@@ -227,7 +234,7 @@ function ShopForm({ initialValues, isCreating, onSaved }) {
 
       <button type="submit" className="primary-button" disabled={isSaving}>
         <Save size={18} />
-        {isSaving ? 'Creating shop...' : isCreating ? 'Create Active Shop' : 'Save Changes'}
+        {isSaving ? 'Submitting shop...' : isCreating ? 'Submit for Approval' : 'Save Changes'}
       </button>
     </form>
   )
@@ -325,12 +332,35 @@ function StatusBanner({ status }) {
 
 function ShopDashboardPage() {
   const [shop, setShop] = useState(null)
+  const [overview, setOverview] = useState({ orders: null, pending: null, analytics: null })
+  const [overviewError, setOverviewError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [availabilityError, setAvailabilityError] = useState('')
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false)
+
+  const loadOverview = useCallback(async () => {
+    const results = await Promise.allSettled([
+      shopOrderApi.getShopOrders(),
+      shopOrderApi.getPendingOrders(),
+      analyticsApi.getShopAnalytics(7),
+    ])
+    setOverview((current) => ({
+      orders: results[0].status === 'fulfilled' ? results[0].value.data.orders || [] : current.orders,
+      pending: results[1].status === 'fulfilled' ? results[1].value.data.orders || [] : current.pending,
+      analytics: results[2].status === 'fulfilled' ? results[2].value.data.data : current.analytics,
+    }))
+    setOverviewError(results.some((result) => result.status === 'rejected')
+      ? 'Some dashboard metrics are unavailable. Check your shop permissions or try again later.'
+      : '')
+  }, [])
+
+  useEffect(() => {
+    const request = window.setTimeout(loadOverview, 0)
+    return () => window.clearTimeout(request)
+  }, [loadOverview])
 
   const loadShop = async () => {
     setIsLoading(true)
@@ -372,6 +402,7 @@ function ShopDashboardPage() {
     setShop(savedShop)
     setIsEditing(false)
     setSuccessMessage(message)
+    loadOverview()
   }
 
   const handleAvailability = async (event) => {
@@ -446,6 +477,15 @@ function ShopDashboardPage() {
         </div>
 
         {successMessage && <div className="auth-success dashboard-message">{successMessage}</div>}
+        {overviewError && <div className="auth-error dashboard-message">{overviewError} <button type="button" className="text-button" onClick={loadOverview}>Retry</button></div>}
+        <div className="owner-overview-grid">
+          <StatCard icon={PackageCheck} label="Total orders" value={overview.orders?.length ?? '—'} detail="From shop order records" />
+          <StatCard icon={Clock3} label="Pending orders" value={overview.pending?.length ?? '—'} detail="Awaiting your response" />
+          <StatCard icon={CheckCheck} label="Completed orders" value={overview.orders ? overview.orders.filter((order) => order.status === 'completed').length : '—'} />
+          <StatCard icon={Timer} label="Current queue" value={overview.orders ? overview.orders.filter((order) => ['accepted', 'printing', 'ready'].includes(order.status)).length : '—'} detail="Accepted and in progress" />
+          <StatCard icon={BarChart3} label="Today's orders" value={overview.analytics?.dailyOrders ? overview.analytics.dailyOrders[overview.analytics.dailyOrders.length - 1]?.orders : '—'} detail="From the last 7 days" />
+          <StatCard icon={BarChart3} label="Average wait" value={overview.analytics?.summary?.averageWaitingTime == null ? '—' : `${Math.round(overview.analytics.summary.averageWaitingTime / 60)} min`} detail="Completed historical queue time" />
+        </div>
         <StatusBanner status={shop.approvalStatus} />
 
         <div className="dashboard-grid">

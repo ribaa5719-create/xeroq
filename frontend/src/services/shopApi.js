@@ -1,4 +1,5 @@
 import api from './api'
+import { calculateDistanceInKilometers } from '../utils/distance'
 
 const getPlaceSearchBounds = ({ latitude, longitude, radius }) => {
   const latitudeDelta = radius / 111.32
@@ -34,20 +35,32 @@ export const shopApi = {
     }
 
     const results = await response.json()
-    return results.filter((place) => place && place.lat && place.lon).map((place) => ({
-      id: `place-${place.place_id}`,
-      name: place.name || place.display_name.split(',')[0],
-      address: place.address?.road || place.address?.village || place.address?.city || place.display_name,
-      city: place.address?.city || place.address?.town || place.address?.village || place.address?.state || 'Nearby area',
-      latitude: Number(place.lat),
-      longitude: Number(place.lon),
-      isRegistered: false,
-      isUnregistered: true,
-      availability: 'not_registered',
-      ratingAverage: null,
-      ratingCount: 0,
-      placeType: place.type || 'print shop',
-      displayName: place.display_name,
-    }))
+    return results
+      .filter((place) => place && place.lat && place.lon)
+      .map((place) => ({
+        id: `place-${place.place_id}`,
+        name: place.name || place.display_name.split(',')[0],
+        address: place.address?.road || place.address?.village || place.address?.city || place.display_name,
+        city: place.address?.city || place.address?.town || place.address?.village || place.address?.state || 'Nearby area',
+        latitude: Number(place.lat),
+        longitude: Number(place.lon),
+        isRegistered: false,
+        isUnregistered: true,
+        availability: 'not_registered',
+        ratingAverage: null,
+        ratingCount: 0,
+        placeType: place.type || 'print shop',
+        displayName: place.display_name,
+      }))
+      .filter((place) => Number.isFinite(place.latitude)
+        && Number.isFinite(place.longitude)
+        && place.latitude >= -90
+        && place.latitude <= 90
+        && place.longitude >= -180
+        && place.longitude <= 180
+        && calculateDistanceInKilometers(
+          { latitude, longitude },
+          { latitude: place.latitude, longitude: place.longitude },
+        ) <= radius)
   },
 }

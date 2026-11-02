@@ -14,6 +14,7 @@ const statusCopy = {
   rejected: 'Order rejected',
   cancelled: 'Order cancelled',
 }
+const progressStages = ['pending', 'accepted', 'printing', 'ready', 'completed']
 
 function LiveQueuePage() {
   const location = useLocation()
@@ -86,6 +87,8 @@ function LiveQueuePage() {
 
   const currentStatus = queue?.status || 'pending'
   const isTerminal = terminalStatuses.includes(currentStatus)
+  const progressIndex = progressStages.indexOf(currentStatus)
+  const progressPercent = progressIndex < 0 ? 0 : (progressIndex / (progressStages.length - 1)) * 100
   const waitMessage = currentStatus === 'printing'
     ? 'Printing now'
     : currentStatus === 'ready'
@@ -108,6 +111,11 @@ function LiveQueuePage() {
         <div className="queue-shop-strip"><Store size={20} /><div><span className="card-kicker">Printing at</span><strong>{shopName}</strong></div>{isUpdating && <span className="updating-label"><LoaderCircle size={14} className="spin-icon" /> Updating queue...</span>}</div>
         <div className={`priority-badge ${queue?.priority === 'urgent' ? 'urgent' : 'normal'}`}>{queue?.priority === 'urgent' ? 'Urgent Print 🚨' : 'Normal Print'}</div>
         <div className="queue-status-banner"><CheckCircle2 size={23} /><div><strong>{statusCopy[currentStatus] || 'Order status updated'}</strong><span>Last updated: {queue ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</span></div></div>
+        {!['rejected', 'cancelled'].includes(currentStatus) && <section className="queue-progress-section" aria-label="Print progress">
+          <div className="queue-progress-heading"><strong>Print progress</strong><span>{statusCopy[currentStatus] || 'Order status updated'}</span></div>
+          <div className="queue-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progressPercent} aria-label="Order progress"><span style={{ width: `${progressPercent}%` }} /></div>
+          <div className="queue-progress-stages">{progressStages.map((stage, index) => <span className={index <= progressIndex ? 'complete' : ''} key={stage}>{stage === 'ready' ? 'Ready' : stage[0].toUpperCase() + stage.slice(1)}</span>)}</div>
+        </section>}
         <div className="queue-metrics">
           <QueueMetric icon={Hash} label="Your Token" value={queue?.token || '—'} />
           <QueueMetric icon={Store} label="Now Serving" value={queue?.currentServingToken || '—'} />

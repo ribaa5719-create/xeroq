@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Clock3,
   FileText,
+  Menu,
   MapPin,
   Printer,
   QrCode,
@@ -10,32 +11,38 @@ import {
   Sparkles,
   TimerReset,
   Upload,
+  X,
 } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
 import { Link, Route, Routes, useNavigate } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import NotificationBell from './components/NotificationBell'
+import DashboardLayout from './components/DashboardLayout'
 import { useAuth } from './context/useAuth'
-import LoginPage from './pages/LoginPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import PlaceholderPage from './pages/PlaceholderPage'
-import RegisterPage from './pages/RegisterPage'
-import ShopDashboardPage from './pages/ShopDashboardPage'
-import ShopDetailsPage from './pages/ShopDetailsPage'
-import ShopsPage from './pages/ShopsPage'
-import OrderSummaryPage from './pages/OrderSummaryPage'
-import UploadPrintPage from './pages/UploadPrintPage'
-import LiveQueuePage from './pages/LiveQueuePage'
-import ShopQueuePage from './pages/ShopQueuePage'
-import ShopOrdersPage from './pages/ShopOrdersPage'
-import ShopAnalyticsPage from './pages/ShopAnalyticsPage'
-import NotificationsPage from './pages/NotificationsPage'
-import OrdersPage from './pages/OrdersPage'
-import OrderDetailsPage from './pages/OrderDetailsPage'
-import AdminDashboardPage from './pages/AdminDashboardPage'
-import AdminUsersPage from './pages/AdminUsersPage'
-import AdminShopsPage from './pages/AdminShopsPage'
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const ShopDashboardPage = lazy(() => import('./pages/ShopDashboardPage'))
+const ShopDetailsPage = lazy(() => import('./pages/ShopDetailsPage'))
+const ShopsPage = lazy(() => import('./pages/ShopsPage'))
+const OrderSummaryPage = lazy(() => import('./pages/OrderSummaryPage'))
+const UploadPrintPage = lazy(() => import('./pages/UploadPrintPage'))
+const LiveQueuePage = lazy(() => import('./pages/LiveQueuePage'))
+const ShopQueuePage = lazy(() => import('./pages/ShopQueuePage'))
+const ShopOrdersPage = lazy(() => import('./pages/ShopOrdersPage'))
+const ShopAnalyticsPage = lazy(() => import('./pages/ShopAnalyticsPage'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const OrdersPage = lazy(() => import('./pages/OrdersPage'))
+const OrderDetailsPage = lazy(() => import('./pages/OrderDetailsPage'))
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'))
+const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
+const AdminShopsPage = lazy(() => import('./pages/AdminShopsPage'))
+const StudentProfilePage = lazy(() => import('./pages/StudentProfilePage'))
+const AdminIntegrationPage = lazy(() => import('./pages/AdminIntegrationPage'))
 import './App.css'
+import './redesign.css'
 
 const navItems = [
   { label: 'Home', path: '/' },
@@ -114,6 +121,8 @@ const trustStats = [
 function HomePage() {
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const accountHome = user?.role === 'shop_owner' ? '/shop/dashboard' : user?.role === 'admin' ? '/admin/dashboard' : '/orders'
 
   const handleLogout = () => {
     logout()
@@ -129,15 +138,21 @@ function HomePage() {
             <span>XeroQ</span>
           </Link>
 
-          <nav className="main-nav" aria-label="Main navigation">
-            {navItems.map((item) => (
-              <Link key={item.label} to={item.path} className="nav-link">
+          <button type="button" className="mobile-nav-toggle" aria-label={isMobileMenuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen((open) => !open)}>
+            {isMobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
+          </button>
+
+          <nav className={`main-nav ${isMobileMenuOpen ? 'mobile-open' : ''}`} aria-label="Main navigation">
+            {(isAuthenticated
+              ? [{ label: 'Home', path: '/' }, { label: 'Find Shops', path: '/shops' }, { label: user?.role === 'shop_owner' ? 'Shop Dashboard' : user?.role === 'admin' ? 'Admin Dashboard' : 'My Orders', path: accountHome }]
+              : navItems).map((item) => (
+              <Link key={item.label} to={item.path} className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
                 {item.label}
               </Link>
             ))}
           </nav>
 
-          <div className="nav-actions">
+          <div className={`nav-actions ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
             {isAuthenticated ? (
               <>
                 {user?.role === 'student' && <NotificationBell />}
@@ -180,12 +195,11 @@ function HomePage() {
 
               <div className="hero-actions">
                 <Link to="/shops" className="primary-button">
-                  Find Xerox Shops
+                  <Search size={18} /> Find Xerox Shops
                   <ArrowRight size={18} />
                 </Link>
-                <Link to="/upload-print" className="secondary-button">
-                  <FileText size={18} />
-                  Upload Print File
+                <Link to={isAuthenticated ? '/shops' : '/register'} className="secondary-button">
+                  <FileText size={18} /> Get Started
                 </Link>
               </div>
 
@@ -312,6 +326,35 @@ function HomePage() {
           </div>
         </section>
 
+        <section className="benefits-section">
+          <div className="container benefits-grid">
+            <article className="benefit-panel student-benefit">
+              <span className="section-tag">For students</span>
+              <h2>More time for what matters.</h2>
+              <p>Compare nearby print shops, choose clear print options, and follow order progress without waiting at the counter.</p>
+              <Link to="/shops" className="text-link">Explore nearby shops <ArrowRight size={16} /></Link>
+            </article>
+            <article className="benefit-panel owner-benefit">
+              <span className="section-tag">For shop owners</span>
+              <h2>A calmer way to manage print work.</h2>
+              <p>Receive digital orders, move accepted work through a queue, and keep customers informed as jobs progress.</p>
+              <Link to="/register" className="text-link">Create a shop account <ArrowRight size={16} /></Link>
+            </article>
+          </div>
+        </section>
+
+        <section className="technology-section">
+          <div className="container technology-card">
+            <div><span className="section-tag">Built for reliable print workflows</span><h2>Useful tools, connected in one place.</h2></div>
+            <div className="technology-points">
+              <span><ShieldCheck size={18} /> Role-based workspaces</span>
+              <span><MapPin size={18} /> Location-aware discovery</span>
+              <span><QrCode size={18} /> Token-based collection</span>
+              <span><Clock3 size={18} /> Order status updates</span>
+            </div>
+          </div>
+        </section>
+
         <section className="cta-section">
           <div className="container cta-box">
             <div>
@@ -349,7 +392,14 @@ function HomePage() {
 }
 
 function App() {
+  const dashboardRoute = (role, element) => (
+    <ProtectedRoute allowedRoles={[role]}>
+      <DashboardLayout role={role}>{element}</DashboardLayout>
+    </ProtectedRoute>
+  )
+
   return (
+    <Suspense fallback={<div className="app-shell route-loading" role="status">Loading your XeroQ workspace…</div>}>
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -361,145 +411,78 @@ function App() {
 
       <Route
         path="/upload-print"
-        element={
-          <ProtectedRoute allowedRoles={['student']}>
-            <UploadPrintPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('student', <UploadPrintPage />)}
       />
       <Route
         path="/order-summary"
-        element={
-          <ProtectedRoute allowedRoles={['student']}>
-            <OrderSummaryPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('student', <OrderSummaryPage />)}
       />
       <Route
         path="/live-queue"
-        element={
-          <ProtectedRoute allowedRoles={['student']}>
-            <LiveQueuePage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('student', <LiveQueuePage />)}
       />
       <Route
         path="/notifications"
-        element={
-          <ProtectedRoute allowedRoles={['student']}>
-            <NotificationsPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('student', <NotificationsPage />)}
       />
       <Route
         path="/orders"
-        element={
-          <ProtectedRoute allowedRoles={['student']}>
-            <OrdersPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('student', <OrdersPage />)}
       />
-      <Route path="/orders/:id" element={<ProtectedRoute allowedRoles={['student']}><OrderDetailsPage /></ProtectedRoute>} />
+      <Route path="/orders/:id" element={dashboardRoute('student', <OrderDetailsPage />)} />
       <Route
         path="/profile"
-        element={
-          <ProtectedRoute allowedRoles={['student']}>
-            <PlaceholderPage badge="Profile" title="My Profile" description="Manage your saved details, preferred print locations, and student account settings here." />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('student', <StudentProfilePage />)}
       />
 
       <Route
         path="/shop/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={['shop_owner']}>
-            <ShopDashboardPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('shop_owner', <ShopDashboardPage />)}
       />
       <Route
         path="/shop/orders"
-        element={
-          <ProtectedRoute allowedRoles={['shop_owner']}>
-            <ShopOrdersPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('shop_owner', <ShopOrdersPage />)}
       />
       <Route
         path="/shop/queue"
-        element={
-          <ProtectedRoute allowedRoles={['shop_owner']}>
-            <ShopQueuePage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('shop_owner', <ShopQueuePage />)}
       />
       <Route
         path="/shop/profile"
-        element={
-          <ProtectedRoute allowedRoles={['shop_owner']}>
-            <PlaceholderPage badge="Shop Owner" title="Shop Profile" description="Manage shop details, service offerings, operating hours, and customer-facing listing information here." />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('shop_owner', <ShopDashboardPage />)}
       />
       <Route
         path="/shop/analytics"
-        element={
-          <ProtectedRoute allowedRoles={['shop_owner']}>
-            <ShopAnalyticsPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('shop_owner', <ShopAnalyticsPage />)}
       />
 
       <Route
         path="/admin/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminDashboardPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('admin', <AdminDashboardPage />)}
       />
       <Route
         path="/admin/users"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminUsersPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('admin', <AdminUsersPage />)}
       />
       <Route
         path="/admin/shops"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminShopsPage />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('admin', <AdminShopsPage />)}
       />
       <Route
         path="/admin/orders"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <PlaceholderPage badge="Admin" title="Order Oversight" description="Track all orders processed across the platform and review the status of each transaction." />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('admin', <AdminIntegrationPage page="orders" />)}
       />
       <Route
         path="/admin/reports"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <PlaceholderPage badge="Admin" title="Reports" description="This placeholder page is for operational summaries, regional insights, and business reporting tools." />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('admin', <AdminIntegrationPage page="reports" />)}
       />
       <Route
         path="/admin/analytics"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <PlaceholderPage badge="Admin" title="Platform Analytics" description="Analyze traffic, fulfillment trends, and marketplace activity across the entire XeroQ ecosystem." />
-          </ProtectedRoute>
-        }
+        element={dashboardRoute('admin', <AdminIntegrationPage page="analytics" />)}
       />
       <Route path="*" element={<PlaceholderPage badge="404" title="Page Not Found" description="The page you are looking for does not exist yet in the XeroQ frontend structure." />} />
     </Routes>
+    </Suspense>
   )
 }
 

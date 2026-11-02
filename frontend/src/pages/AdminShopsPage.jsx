@@ -1,7 +1,8 @@
-import { AlertCircle, CheckCircle2, LoaderCircle, Search, ShieldCheck, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2, LoaderCircle, Search, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { adminShopApi } from '../services/adminShopApi'
+import { PageHeader } from '../components/UI'
 
 const statusOptions = [
   { value: 'all', label: 'All Shops' },
@@ -150,15 +151,7 @@ function AdminShopsPage() {
           </Link>
         </div>
 
-        <div className="admin-heading">
-          <div>
-            <span className="section-tag">
-              <ShieldCheck size={15} /> Admin
-            </span>
-            <h1>Shop Management</h1>
-            <p>Review registered Xerox shops, approve listings, and monitor platform onboarding.</p>
-          </div>
-        </div>
+        <PageHeader eyebrow="Administration" title="Shop management" description="Review registered Xerox shops, approve listings, and monitor platform onboarding." />
 
         {errorMessage && (
           <div className="auth-error admin-message">

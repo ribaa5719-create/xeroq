@@ -6,13 +6,17 @@ import CompareBar from '../components/CompareBar'
 import ShopComparison from '../components/ShopComparison'
 import { shopApi } from '../services/shopApi'
 import { getReliableLocation } from '../utils/geolocation'
+import { calculateDistanceInKilometers } from '../utils/distance'
 
 const DEFAULT_RADIUS = 5
 const MAX_COMPARE_SHOPS = 4
-
 const isValidLocation = (location) => location
   && Number.isFinite(location.latitude)
+  && location.latitude >= -90
+  && location.latitude <= 90
   && Number.isFinite(location.longitude)
+  && location.longitude >= -180
+  && location.longitude <= 180
 
 const getDirectionsUrl = (userLocation, shop) =>
   `https://www.google.com/maps/dir/?api=1&origin=${userLocation.latitude},${userLocation.longitude}&destination=${shop.latitude},${shop.longitude}`
@@ -20,25 +24,15 @@ const getDirectionsUrl = (userLocation, shop) =>
 const getOpenInMapsUrl = (shop) =>
   `https://www.google.com/maps/search/?api=1&query=${shop.latitude},${shop.longitude}`
 
-const calculateDistanceKm = (latitudeA, longitudeA, latitudeB, longitudeB) => {
-  const toRadians = (value) => (value * Math.PI) / 180
-  const earthRadiusKm = 6371
-  const deltaLatitude = toRadians(latitudeB - latitudeA)
-  const deltaLongitude = toRadians(longitudeB - longitudeA)
-  const latA = toRadians(latitudeA)
-  const latB = toRadians(latitudeB)
-
-  const haversine = Math.sin(deltaLatitude / 2) ** 2 + Math.cos(latA) * Math.cos(latB) * Math.sin(deltaLongitude / 2) ** 2
-  return 2 * earthRadiusKm * Math.asin(Math.sqrt(haversine))
-}
-
-const mergeNearbyShops = (registeredShops, nearbyPlaces, userLocation) => {
+const mergeNearbyShops = (registeredShops, nearbyPlaces, userLocation, radius) => {
   const merged = [...registeredShops.map((shop) => ({ ...shop, isRegistered: true }))]
+  const placesWithinRadius = nearbyPlaces.filter((place) => isValidLocation(place)
+    && calculateDistanceInKilometers(userLocation, place) <= radius)
   const seenKeys = new Set(
     registeredShops.map((shop) => `${Number(shop.latitude).toFixed(4)}:${Number(shop.longitude).toFixed(4)}`),
   )
 
-  nearbyPlaces.forEach((place) => {
+  placesWithinRadius.forEach((place) => {
     const key = `${Number(place.latitude).toFixed(4)}:${Number(place.longitude).toFixed(4)}`
     const duplicate = registeredShops.some((shop) => {
       const shopLat = Number(shop.latitude)
@@ -50,7 +44,7 @@ const mergeNearbyShops = (registeredShops, nearbyPlaces, userLocation) => {
       seenKeys.add(key)
       merged.push({
         ...place,
-        distance: userLocation ? calculateDistanceKm(userLocation.latitude, userLocation.longitude, place.latitude, place.longitude) : null,
+        distance: calculateDistanceInKilometers(userLocation, place),
         isRegistered: false,
       })
     }
@@ -78,7 +72,9 @@ function ShopCard({ shop, userLocation, isSelected, isCompareSelected, isCompare
       <h2>{shop.name}</h2>
       <p className="shop-address"><MapPin size={15} /> {shop.address || shop.displayName || 'Nearby print shop'}</p>
       <div className="shop-card-meta">
-        <span>{shop.distance !== undefined ? `${Number(shop.distance).toFixed(2)} km away` : 'Nearby place'}</span>
+        <span>{shop.distance !== null && shop.distance !== undefined && Number.isFinite(Number(shop.distance))
+          ? `${Number(shop.distance).toFixed(2)} km away`
+          : 'Distance unavailable'}</span>
         <span className="rating-placeholder">
           <Star size={14} />
           {isRegistered ? (shop.ratingAverage ? `${Number(shop.ratingAverage).toFixed(1)} (${shop.ratingCount})` : 'No ratings yet') : 'Basic place info only'}
@@ -155,53 +151,56 @@ function ShopsPage() {
   const searchControllers = useRef({ registered: null, external: null })
 
   const findLocation = useCallback(() => {
+    setSearchMode('nearby')
     locationRequestCancel.current?.()
     searchRequestId.current += 1
     searchControllers.current.registered?.abort()
     searchControllers.current.external?.abort()
-    if (searchMode !== 'all') {
-      setUserLocation(null)
-      setRegisteredState('loading')
-      setExternalState('loading')
-      setShops([])
-      setSelectedShopId(null)
-      setCompareShopIds([])
-      setSearchError('')
-      setNearbyPlacesError('')
-    }
+    setUserLocation(null)
+    setRegisteredState('loading')
+    setExternalState('loading')
+    setShops([])
+    setSelectedShopId(null)
+    setCompareShopIds([])
+    setSearchError('')
+    setNearbyPlacesError('')
+    setLocationState('loading')
+    setLocationError('')
     if (!navigator.geolocation) {
       setLocationState('error')
       setLocationError('Your browser does not support location services.')
       return
     }
 
-    setLocationState('loading')
-    setLocationError('')
     locationRequestCancel.current = getReliableLocation(
       ({ coords }) => {
-        const nextLocation = { latitude: coords.latitude, longitude: coords.longitude }
+        const nextLocation = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: coords.accuracy,
+        }
         if (isValidLocation(nextLocation)) {
           setUserLocation(nextLocation)
           setLocationState('ready')
         } else {
           setUserLocation(null)
           setLocationState('error')
-          setLocationError('Unable to get your location. Please check GPS/location settings and try again.')
+          setLocationError('Your browser returned invalid coordinates. Please retry location detection.')
         }
       },
       (error) => {
-        if (searchMode !== 'all') setUserLocation(null)
+        setUserLocation(null)
         setLocationState('error')
-        setLocationError(error.code === error.PERMISSION_DENIED
+        setLocationError(error.code === 1
           ? 'Location permission is blocked. Please enable location access in your browser/device settings.'
-          : error.code === error.TIMEOUT
+          : error.code === 3
             ? 'Unable to get your location. GPS took too long to respond. Please try again.'
-            : error.code === error.POSITION_UNAVAILABLE
+            : error.code === 2
               ? 'Unable to get your location. Please check GPS/location settings and try again.'
               : 'Unable to get your location. Please check GPS/location settings and try again.')
       },
     )
-  }, [searchMode])
+  }, [])
 
   const searchNearbyShops = useCallback(() => {
     if (searchMode === 'nearby' && (locationState !== 'ready' || !isValidLocation(userLocation))) return undefined
@@ -226,13 +225,17 @@ function ShopsPage() {
 
     const updateResults = () => {
       if (searchRequestId.current !== requestId) return
-      const mergedShops = mergeNearbyShops(currentRegisteredShops, currentNearbyPlaces, userLocation)
+      const mergedShops = mergeNearbyShops(currentRegisteredShops, currentNearbyPlaces, userLocation, radius)
       setShops(mergedShops)
       setSelectedShopId((currentId) => currentId && mergedShops.some((shop) => shop.id === currentId) ? currentId : mergedShops[0]?.id || null)
       setCompareShopIds((currentIds) => currentIds.filter((id) => mergedShops.some((shop) => shop.id === id)))
     }
 
-    shopApi.getNearby({ ...(userLocation || {}), radius, mode: searchMode }, { signal: registeredController.signal })
+    shopApi.getNearby({
+      ...(searchMode === 'nearby' ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : {}),
+      radius,
+      mode: searchMode,
+    }, { signal: registeredController.signal })
       .then((response) => {
         if (searchRequestId.current !== requestId) return
         currentRegisteredShops = response.data.shops || []
@@ -246,7 +249,7 @@ function ShopsPage() {
       })
 
     if (searchMode !== 'all') {
-      shopApi.getNearbyPlaces({ ...userLocation, radius }, externalController.signal)
+      shopApi.getNearbyPlaces({ latitude: userLocation.latitude, longitude: userLocation.longitude, radius }, externalController.signal)
         .then((places) => {
           if (searchRequestId.current !== requestId) return
           currentNearbyPlaces = places
@@ -339,24 +342,20 @@ function ShopsPage() {
             </select>
           </div>
           <button type="button" className="primary-button location-button" onClick={findLocation} disabled={locationState === 'loading'}>
-            <LocateFixed size={17} /> {locationState === 'ready' ? 'Refresh location' : locationState === 'error' ? 'Retry location' : 'Use my location'}
+            <LocateFixed size={17} /> {locationState === 'ready' ? 'Refresh location' : locationState === 'error' ? 'Retry location' : 'Use Current Location'}
           </button>
         </div>
 
+        {searchMode === 'all' && !userLocation && <div className="location-debug">Location permission is not required for All Shops mode; no current location is being used.</div>}
+        {userLocation && <div className="location-debug" role="status">
+          <MapPin size={16} />
+          <span>Current location: <strong>{userLocation.latitude.toFixed(6)}, {userLocation.longitude.toFixed(6)}</strong>{Number.isFinite(userLocation.accuracy) && <small>±{Math.round(userLocation.accuracy)} m</small>}</span>
+        </div>}
         {locationError && <div className="auth-error discovery-error"><AlertCircle size={18} /> {locationError}</div>}
         {nearbyPlacesError && <div className="auth-error discovery-error"><AlertCircle size={18} /> {nearbyPlacesError}</div>}
         {searchError && <div className="auth-error discovery-error"><AlertCircle size={18} /> {searchError}</div>}
 
-        {!userLocation && searchMode !== 'all' ? (
-          <div className="location-prompt dashboard-card">
-            <div className="prompt-icon"><LocateFixed size={30} /></div>
-            <h2>Allow location access</h2>
-            <p>We use your current browser location to calculate distances and show nearby XeroQ shops and nearby print places.</p>
-            <button type="button" className="primary-button" onClick={findLocation} disabled={locationState === 'loading'}>
-              {locationState === 'loading' ? 'Finding your location...' : 'Find shops near me'}
-            </button>
-          </div>
-        ) : (
+        {userLocation || searchMode === 'all' ? (
           <>
           <div className="discovery-layout">
             <div className="nearby-results">
@@ -382,7 +381,14 @@ function ShopsPage() {
           {compareShopIds.length > 0 && <CompareBar selectedCount={compareShopIds.length} maxItems={MAX_COMPARE_SHOPS} onCompare={() => setShowComparison(true)} onClear={() => { setCompareShopIds([]); setShowComparison(false) }} />}
           {showComparison && selectedCompareShops.length >= 2 && <ShopComparison shops={selectedCompareShops} onRemove={(shopId) => setCompareShopIds((currentIds) => currentIds.filter((id) => id !== shopId))} onClose={() => setShowComparison(false)} />}
           </>
-        )}
+        ) : <div className="location-prompt dashboard-card">
+          <div className="prompt-icon"><LocateFixed size={30} /></div>
+          <h2>Allow location access</h2>
+          <p>We use your current browser location to calculate distances and show nearby XeroQ shops and nearby print places.</p>
+          <button type="button" className="primary-button" onClick={findLocation} disabled={locationState === 'loading'}>
+            {locationState === 'loading' ? 'Finding your location...' : locationState === 'error' ? 'Retry location' : 'Find shops near me'}
+          </button>
+        </div>}
       </div>
     </div>
   )

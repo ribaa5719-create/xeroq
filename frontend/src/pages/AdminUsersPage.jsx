@@ -2,6 +2,7 @@ import { AlertCircle, ArrowLeft, ChevronLeft, ChevronRight, Search, UserRound, U
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { adminApi } from '../services/adminApi'
+import { PageHeader } from '../components/UI'
 
 const roles = [
   { value: '', label: 'All roles' },
@@ -51,7 +52,8 @@ function AdminUsersPage() {
     <div className="app-shell admin-shell">
       <div className="container admin-container">
         <div className="admin-topbar"><Link to="/" className="brand"><div className="brand-mark">X</div><span>XeroQ</span></Link><Link to="/admin/dashboard" className="back-link"><ArrowLeft size={16} /> Dashboard</Link></div>
-        <div className="admin-heading"><div><span className="section-tag"><Users size={15} /> Admin</span><h1>User Management</h1><p>Review registered students, shop owners, and administrators.</p></div></div>
+        <PageHeader eyebrow="Administration" title="User management" description="Review registered students, shop owners, and administrators." />
+        <div className="admin-dashboard-note dashboard-card"><UserRound size={20} /><div><strong>Account controls are read-only</strong><p>The current admin API supports listing and filtering users, but does not expose user detail, block, or unblock actions.</p></div></div>
         <div className="admin-filters"><div className="admin-search"><Search size={17} /><input value={search} onChange={updateSearch} placeholder="Search name or email" aria-label="Search users" /></div><select value={role} onChange={updateRole} aria-label="Filter by role">{roles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
         {errorMessage && <div className="auth-error admin-message"><AlertCircle size={18} /> {errorMessage} <button type="button" className="text-button" onClick={loadUsers}>Retry</button></div>}
         <section className="admin-users-card dashboard-card">

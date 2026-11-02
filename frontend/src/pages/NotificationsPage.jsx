@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { notificationApi } from '../services/notificationApi'
 import PushNotificationSettings from '../components/PushNotificationSettings'
+import { NotificationItem } from '../components/UI'
 
 function NotificationsPage() {
   const navigate = useNavigate()
@@ -65,7 +66,7 @@ function NotificationsPage() {
         <PushNotificationSettings />
         <section className="notifications-card dashboard-card">
           <div className="notifications-card-header"><div><span className="card-kicker">Your activity</span><h2>Unread: {unreadCount}</h2></div><button type="button" className="secondary-button mark-all-button" onClick={markAllRead} disabled={isMarkingAll || unreadCount === 0}>{isMarkingAll ? <LoaderCircle size={16} className="spin-icon" /> : <Check size={16} />} Mark all as read</button></div>
-          {isLoading ? <div className="notification-empty"><LoaderCircle size={28} className="spin-icon" /><p>Loading notifications...</p></div> : notifications.length === 0 ? <div className="notification-empty"><Bell size={30} /><p>No notifications yet.</p></div> : <div className="notification-list">{notifications.map((notification) => <button type="button" key={notification.id} className={`notification-item ${notification.read ? '' : 'unread'}`} onClick={() => markRead(notification)}><div className="notification-item-icon"><Bell size={18} /></div><div className="notification-item-content"><strong>{notification.title}</strong><span>{notification.message}</span><small>{new Date(notification.createdAt).toLocaleString()}</small></div>{!notification.read && <span className="unread-dot" aria-label="Unread" />}</button>)}</div>}
+          {isLoading ? <div className="notification-empty"><LoaderCircle size={28} className="spin-icon" /><p>Loading notifications...</p></div> : notifications.length === 0 ? <div className="notification-empty"><Bell size={30} /><p>No notifications yet.</p></div> : <div className="notification-list">{notifications.map((notification) => <NotificationItem key={notification.id} title={notification.title} message={notification.message} date={new Date(notification.createdAt).toLocaleString()} isRead={notification.read} onClick={() => markRead(notification)} />)}</div>}
         </section>
       </div>
     </div>

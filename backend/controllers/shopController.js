@@ -164,7 +164,7 @@ const createShop = async (req, res, next) => {
       bwPrice: req.body.bwPrice,
       colorPrice: req.body.colorPrice,
       availability: req.body.availability || 'available',
-      approvalStatus: 'approved',
+      approvalStatus: 'pending',
     }
 
     const existingShop = await Shop.findOne({ owner: ownerId })

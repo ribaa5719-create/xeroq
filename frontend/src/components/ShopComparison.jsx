@@ -9,7 +9,12 @@ function ComparisonValue({ value, isHighlighted }) {
 function ShopComparison({ shops, onRemove, onClose }) {
   const lowestBwPrice = lowestValue(shops, 'bwPrice')
   const lowestColorPrice = lowestValue(shops, 'colorPrice')
-  const nearestDistance = lowestValue(shops, 'distance')
+  const distances = shops
+    .map((shop) => shop.distance)
+    .filter((distance) => distance !== null && distance !== undefined && Number.isFinite(Number(distance)))
+    .map(Number)
+  const nearestDistance = distances.length ? Math.min(...distances) : null
+  const hasDistanceData = nearestDistance !== null
 
   return (
     <section className="comparison-panel" aria-labelledby="comparison-title">
@@ -43,7 +48,13 @@ function ShopComparison({ shops, onRemove, onClose }) {
           <tbody>
             <tr>
               <th scope="row"><MapPin size={15} /> Distance</th>
-              {shops.map((shop) => <td key={shop.id}><ComparisonValue value={`${Number(shop.distance).toFixed(2)} km`} isHighlighted={Number(shop.distance) === nearestDistance} /></td>)}
+              {shops.map((shop) => {
+                const hasDistance = shop.distance !== null && shop.distance !== undefined && Number.isFinite(Number(shop.distance))
+                return <td key={shop.id}><ComparisonValue
+                  value={hasDistance ? `${Number(shop.distance).toFixed(2)} km` : 'Unavailable'}
+                  isHighlighted={hasDistance && Number(shop.distance) === nearestDistance}
+                /></td>
+              })}
             </tr>
             <tr>
               <th scope="row">B/W price</th>
@@ -68,7 +79,7 @@ function ShopComparison({ shops, onRemove, onClose }) {
           </tbody>
         </table>
       </div>
-      <p className="comparison-note">Highlighted values show the lowest price and nearest shop. Ratings and queue information are coming soon.</p>
+      <p className="comparison-note">Highlighted values show the lowest available prices{hasDistanceData ? ' and nearest shop' : ''}. Queue and travel-time data are not exposed for public shop listings, so fastest-shop and best-overall recommendations are unavailable.</p>
     </section>
   )
 }

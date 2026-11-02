@@ -33,4 +33,4 @@ services:
         status: 200
     envVars:
       - key: VITE_API_URL
-        value: https://xeroq-rkd8.onrender.com/api
+        value: https://xeroq-backend.onrender.com/api

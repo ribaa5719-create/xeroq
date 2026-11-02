@@ -1,18 +1,25 @@
-import { AlertCircle, LoaderCircle, ShieldCheck, Users, UserRoundCheck, Store, UserCog } from 'lucide-react'
+import { AlertCircle, LoaderCircle, ShieldCheck, Users, UserRoundCheck, Store, UserCog, ShoppingBag, Clock3 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { adminApi } from '../services/adminApi'
+import { adminShopApi } from '../services/adminShopApi'
+import { PageHeader, StatCard } from '../components/UI'
 
 function AdminDashboardPage() {
   const [summary, setSummary] = useState(null)
+  const [shops, setShops] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
 
   const loadSummary = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await adminApi.getUsers({ limit: 1 })
-      setSummary(response.data.data.summary)
+      const [usersResponse, shopsResponse] = await Promise.all([
+        adminApi.getUsers({ limit: 1 }),
+        adminShopApi.getAllShops(),
+      ])
+      setSummary(usersResponse.data.data.summary)
+      setShops(shopsResponse.data.shops || [])
       setErrorMessage('')
     } catch (error) {
       setErrorMessage(error.response?.status === 403 ? 'You do not have permission to view the admin dashboard.' : 'Unable to load dashboard data.')
@@ -29,23 +36,34 @@ function AdminDashboardPage() {
   return (
     <div className="app-shell admin-shell">
       <div className="container admin-container">
-        <div className="admin-topbar"><Link to="/" className="brand"><div className="brand-mark">X</div><span>XeroQ</span></Link><Link to="/" className="back-link">Back to Home</Link></div>
-        <div className="admin-heading"><div><span className="section-tag"><ShieldCheck size={15} /> Admin</span><h1>Platform overview</h1><p>Manage the people who keep XeroQ moving.</p></div><div className="admin-heading-actions"><Link to="/admin/users" className="primary-button"><Users size={17} /> User Management</Link><Link to="/admin/shops" className="primary-button"><Store size={17} /> Shop Management</Link></div></div>
+        <PageHeader
+          eyebrow="Administration"
+          title="Platform overview"
+          description="Manage the people and shops that keep XeroQ moving."
+          actions={<><Link to="/admin/users" className="secondary-button"><Users size={17} /> User management</Link><Link to="/admin/shops" className="primary-button"><Store size={17} /> Shop management</Link></>}
+        />
         {errorMessage && <div className="auth-error admin-message"><AlertCircle size={18} /> {errorMessage} <button type="button" className="text-button" onClick={loadSummary}>Retry</button></div>}
-        {isLoading ? <div className="admin-empty dashboard-card"><LoaderCircle size={28} className="spin-icon" /><p>Loading dashboard...</p></div> : <div className="admin-metric-grid">
-          <AdminMetric icon={Users} label="Total Users" value={summary?.totalUsers ?? 0} />
-          <AdminMetric icon={UserRoundCheck} label="Students" value={summary?.students ?? 0} />
-          <AdminMetric icon={Store} label="Shop Owners" value={summary?.shopOwners ?? 0} />
-          <AdminMetric icon={UserCog} label="Admins" value={summary?.admins ?? 0} />
-        </div>}
-        <div className="admin-dashboard-note dashboard-card"><ShieldCheck size={22} /><div><strong>Admin foundation</strong><p>Use User Management to inspect current accounts. Shop, order, reports, and analytics administration will be added separately.</p></div></div>
+        {isLoading ? <div className="admin-empty dashboard-card"><LoaderCircle size={28} className="spin-icon" /><p>Loading dashboard...</p></div> : <>
+          <div className="admin-metric-grid">
+            <AdminMetric icon={Users} label="Total users" value={summary?.totalUsers ?? 0} />
+            <AdminMetric icon={UserRoundCheck} label="Students" value={summary?.students ?? 0} />
+            <AdminMetric icon={Store} label="Registered shops" value={shops.length} />
+            <AdminMetric icon={Clock3} label="Pending approvals" value={shops.filter((shop) => shop.approvalStatus === 'pending').length} />
+            <AdminMetric icon={UserCog} label="Shop owners" value={summary?.shopOwners ?? 0} />
+            <AdminMetric icon={ShoppingBag} label="Platform orders" value="Unavailable" />
+          </div>
+          <section className="admin-dashboard-note dashboard-card">
+            <ShieldCheck size={22} />
+            <div><strong>Activity and order reporting need an admin API</strong><p>User and shop totals above come from existing endpoints. The backend currently provides no platform-wide order, recent activity, report, or analytics endpoint, so those sections are intentionally not populated with estimates.</p></div>
+          </section>
+        </>}
       </div>
     </div>
   )
 }
 
 function AdminMetric({ icon: Icon, label, value }) {
-  return <div className="admin-metric dashboard-card"><div className="admin-metric-icon"><Icon size={20} /></div><span>{label}</span><strong>{value}</strong></div>
+  return <StatCard icon={Icon} label={label} value={value} />
 }
 
 export default AdminDashboardPage

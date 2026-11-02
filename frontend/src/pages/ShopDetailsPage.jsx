@@ -86,6 +86,7 @@ function ShopDetailsPage() {
               <div><Star size={18} /><span><strong>Rating</strong>{shop.ratingAverage ? `${Number(shop.ratingAverage).toFixed(1)} / 5 (${shop.ratingCount} ratings)` : 'No ratings yet'}</span></div>
               {userLocation && <div><MapPin size={18} /><span><strong>Distance</strong>{calculateDistanceInKilometers(userLocation, shop).toFixed(2)} km away</span></div>}
             </div>
+            <p className="queue-availability-note">Live queue estimates are shown for an order after it is placed. Queue data is not available for public shop listings.</p>
             <div className="details-actions">
               <Link to="/upload-print" state={{ shop }} className="secondary-button"><FileText size={17} /> Configure Print</Link>
               <a href={getDirectionsUrl(userLocation, shop)} target="_blank" rel="noreferrer" className="primary-button"><Navigation size={17} /> Get Direction</a>
@@ -93,8 +94,8 @@ function ShopDetailsPage() {
           </section>
 
           <div className="details-map-card">
-            {shop.latitude !== undefined && shop.longitude !== undefined ? (
-              <ShopMap userLocation={userLocation || { latitude: shop.latitude, longitude: shop.longitude }} shops={[shop]} selectedShopId={shop.id} onSelectShop={() => {}} />
+            {shop.latitude !== undefined && shop.latitude !== null && shop.latitude !== '' && shop.longitude !== undefined && shop.longitude !== null && shop.longitude !== '' && Number.isFinite(Number(shop.latitude)) && Number.isFinite(Number(shop.longitude)) ? (
+              <ShopMap userLocation={userLocation} centerOnUserLocation={false} shops={[shop]} selectedShopId={shop.id} onSelectShop={() => {}} />
             ) : <div className="empty-results"><MapPin size={28} /><p>Location coordinates are not available for this shop.</p></div>}
           </div>
         </div>

@@ -1,16 +1,45 @@
-# React + Vite
+# XeroQ frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+XeroQ is a React single-page application for discovering local print shops, configuring print orders, tracking order progress, and managing shop and platform workflows. The frontend is built with React 19, Vite 8, React Router 7, plain CSS, Lucide icons, Axios, Leaflet/React Leaflet, `pdf-lib`, and `qrcode`.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js compatible with the installed Vite release
+- npm
+- The XeroQ API running locally or a configured API URL
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+From this directory:
 
-## Expanding the ESLint configuration
+```sh
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Create a `.env` file when the API is not available at the default URL:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+```
+
+The frontend defaults to `http://localhost:5000/api`. Keep the configured value pointed at the existing XeroQ backend; this application does not replace or mock backend behavior.
+
+## Development and checks
+
+```sh
+npm run dev
+npm run build
+npm run lint
+npm run test:e2e
+```
+
+The Vite development server uses port `5173` and requires that port to be available. Playwright end-to-end tests are located in `tests/`.
+
+## Main frontend areas
+
+- Public landing page, authentication, and nearby shop discovery
+- Student print configuration, orders, queue tracking, notifications, and account view
+- Shop-owner profile, order, queue, and shop analytics workflows
+- Admin user and shop management
+
+Some administrator-wide order monitoring, reports, and analytics require backend endpoints that are not currently available. User block/unblock and student profile editing are also not exposed by the current API; the UI identifies these limitations rather than simulating actions.

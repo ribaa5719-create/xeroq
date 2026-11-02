@@ -2,6 +2,7 @@ import { AlertCircle, ArrowLeft, Banknote, CheckCircle2, Clock3, FileText, Histo
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { shopOrderApi } from '../services/shopOrderApi'
+import { ConfirmDialog } from '../components/UI'
 
 const formatOrderId = (orderId) => String(orderId).slice(-8)
 const uniqueOrders = (orders) => Array.from(new Map(orders.map((order) => [order.id, order])).values())
@@ -13,6 +14,7 @@ function ShopOrdersPage() {
   const [activeAction, setActiveAction] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [orderToReject, setOrderToReject] = useState(null)
   const requestInFlight = useRef(false)
   const requestVersion = useRef(0)
   const isMounted = useRef(true)
@@ -54,8 +56,11 @@ function ShopOrdersPage() {
     }
   }, [loadOrders])
 
-  const handleAction = async (orderId, action) => {
-    if (action === 'reject' && !window.confirm('Reject this order?')) return
+  const handleAction = async (orderId, action, isConfirmed = false) => {
+    if (action === 'reject' && !isConfirmed) {
+      setOrderToReject(orderId)
+      return
+    }
 
     requestVersion.current += 1
     setActiveAction(`${action}:${orderId}`)
@@ -79,6 +84,7 @@ function ShopOrdersPage() {
   }
 
   return (
+    <>
     <div className="app-shell queue-shell">
       <div className="container queue-container">
         <div className="queue-topbar">
@@ -103,6 +109,18 @@ function ShopOrdersPage() {
         </section>
       </div>
     </div>
+    {orderToReject && <ConfirmDialog
+      title="Reject this order?"
+      description="The student will be notified that the shop cannot fulfill this print request."
+      confirmLabel="Reject order"
+      onConfirm={() => {
+        const orderId = orderToReject
+        setOrderToReject(null)
+        handleAction(orderId, 'reject', true)
+      }}
+      onCancel={() => setOrderToReject(null)}
+    />}
+    </>
   )
 }
 
